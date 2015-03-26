@@ -83,6 +83,26 @@ func Debug() {
 	C.im__print_all()
 }
 
+// Round return rounded version of x with prec precision.
+//
+// Special cases are:
+//	Round(±0) = ±0
+//	Round(±Inf) = ±Inf
+//	Round(NaN) = NaN
+func round(x float64, prec int) float64 {
+	var rounder float64
+	pow := math.Pow(10, float64(prec))
+	intermed := x * pow
+	_, frac := math.Modf(intermed)
+	if frac >= 0.5 {
+		rounder = math.Ceil(intermed)
+	} else {
+		rounder = math.Floor(intermed)
+	}
+
+	return rounder / pow
+}
+
 func Resize(buf []byte, o Options) ([]byte, error) {
 	debug("%#+v", o)
 
@@ -135,11 +155,11 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	// Fixed width, auto height
 	case o.Width > 0:
 		factor = float64(inWidth) / float64(o.Width)
-		o.Height = int(math.Floor(float64(inHeight) / factor))
+		o.Height = int(round(float64(inHeight)/factor, 2))
 	// Fixed height, auto width
 	case o.Height > 0:
 		factor = float64(inHeight) / float64(o.Height)
-		o.Width = int(math.Floor(float64(inWidth) / factor))
+		o.Width = int(round(float64(inWidth)/factor, 2))
 	// Identity transform
 	default:
 		factor = 1
@@ -150,7 +170,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 	debug("transform from %dx%d to %dx%d", inWidth, inHeight, o.Width, o.Height)
 
 	// shrink
-	shrink := int(math.Floor(factor))
+	shrink := int(round(factor, 2))
 	if shrink < 1 {
 		shrink = 1
 	}
@@ -191,7 +211,7 @@ func Resize(buf []byte, o Options) ([]byte, error) {
 		debug("shrink on load %d", shrinkOnLoad)
 		// Recalculate integral shrink and double residual
 		factor = math.Max(factor, 1.0)
-		shrink = int(math.Floor(factor))
+		shrink = int(round(factor, 2))
 		residual = float64(shrink) / factor
 		// Reload input using shrink-on-load
 		err := C.vips_jpegload_buffer_shrink(unsafe.Pointer(&buf[0]), C.size_t(len(buf)), &tmpImage, C.int(shrinkOnLoad))
